@@ -7,6 +7,10 @@ build/
 # local env
 .env
 .env.local
+.Renviron
+
+# generated data (real tracking data — do not commit)
+public/data/
 
 # OS
 .DS_Store
