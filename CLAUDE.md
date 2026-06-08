@@ -55,7 +55,10 @@ Hawkeye batter tracking from `BBOPS.PUBLIC.HAWKEYE_BATTER_TRACKING`. Key columns
 | `FRAME_FROM_CONTACT` | Signed frame offset relative to contact (negative = before) |
 | `SEC_FROM_CONTACT` | Same in seconds |
 
-Coordinate system units and axis orientation TBD — to be calibrated by stepping through known swings.
+Coordinates are in feet. Mapping Hawkeye → Three.js (confirmed working):
+- Hawkeye X → Three.js X (no change)
+- Hawkeye Y → Three.js −Z (negate; field depth goes away from viewer)
+- Hawkeye Z → Three.js Y (vertical)
 
 ### swings.json format (local dev)
 
@@ -63,22 +66,36 @@ Coordinate system units and axis orientation TBD — to be calibrated by steppin
 
 ```json
 {
-  "PLAY_ID_1": [
-    { "sec": 0.0, "ffc": -30, "handle": {"x":…,"y":…,"z":…}, "head": {"x":…,"y":…,"z":…} },
+  "default_play_id": "b8bbf11a-44cd-3f4d-bb37-c2931e9be99c",
+  "swings": {
+    "PLAY_ID_1": [
+      {
+        "SEC_FROM_PITCH_RELEASE": 0.0,
+        "FRAME_FROM_PITCH_RELEASE": 0,
+        "FRAME_FROM_CONTACT": -30,
+        "SEC_FROM_CONTACT": -1.0,
+        "handle": {"x":…,"y":…,"z":…},
+        "head":   {"x":…,"y":…,"z":…}
+      },
+      …
+    ],
     …
-  ],
-  …
+  }
 }
 ```
 
 The React app `fetch()`es this file locally; in Shiny, the same object is sent via `postMessage({ type: "load_frames", frames: … })`.
 
-### Bat orientation math
+### Bat positioning math (confirmed working ✓)
 
-Handle → head vector drives bat pose each frame:
-- **Position**: midpoint of handle/head segment
-- **Rotation**: `Quaternion.setFromUnitVectors(NATURAL_AXIS, dir)` where `NATURAL_AXIS` is the GLB's long axis (assumed `+Y` — check console log on first load)
-- **Scale**: `dist(handle, head) / naturalLength` along the long axis only (cross-section untouched)
+Each frame, given `handlePos` and `headPos` in Three.js space:
+
+1. **Rotation** — `Quaternion.setFromUnitVectors(NATURAL_AXIS, dir)` where `NATURAL_AXIS = (0,0,1)` (the GLB's long axis is +Z).
+2. **Scale** — uniform `scale.setScalar(baseScale * s)`, where `baseScale = avgBatLength / naturalLength` and `s = dist / avgBatLength`. Using the average bat length across all loaded swings as the baseline keeps s≈1 for typical swings.
+3. **Position** — endpoint-based, not midpoint: rotate the GLB's local handle endpoint (read from bounding box: `(center.x, center.y, box.min.z)`) into world space, then set `mesh.position = handlePos − handleEndWorld`. This perfectly places the bat ends on the tracking dots with no manual offset tuning.
+4. **FLIP_ENDS** — boolean constant; set `true` if bat renders backwards (head/handle swapped).
+
+The bounding box cross-section center `(center.x, center.y)` must be used (not `(0,0)`) because the GLB origin may be off-center in X/Y.
 
 ## File layout
 
@@ -106,8 +123,9 @@ bat-3d/
 - [x] Bat GLB loads and renders in browser (`npm start`)
 - [x] Frame-by-frame scrubber + PLAY_ID dropdown wired to state
 - [x] postMessage listener wired to Shiny data shape
-- [ ] swings.json generated (run `scripts/pull_swings.R`)
-- [ ] Bat axis / coordinate system calibrated against real data
+- [x] swings.json generated (run `scripts/pull_swings.R`)
+- [x] Bat axis / coordinate system calibrated — tracking dots align perfectly with bat ends
+- [x] Home plate, strike zone, and batter boxes rendered (geometry from batter_swing_graphs_v4.R)
 - [ ] Shiny integration tested end-to-end
 
 ## Development workflow
