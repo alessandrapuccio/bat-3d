@@ -8,7 +8,10 @@ export const PLATE_TARGET = new THREE.Vector3(0, 3.7, 17 / 24); // look-at (TIP/
 export const CAM_RADIUS   = 13;
 export const CAM_HEIGHT   = 1.7;
 
-export const VIEW_PRESETS = { Front: 180, Right: 90, Back: 0, Left: 270 };
+// Aerial uses null as sentinel — no azimuth applies
+export const VIEW_PRESETS = { Front: 180, Right: 90, Back: 0, Left: 270, Aerial: null };
+
+const AERIAL_HEIGHT = 16.4; // feet above ground
 
 export function CameraRig({ azimuth }) {
   const { camera } = useThree();
@@ -16,13 +19,19 @@ export function CameraRig({ azimuth }) {
 
   useEffect(() => {
     if (!controlsRef.current) return;
-    const rad = (azimuth * Math.PI) / 180;
-    camera.position.set(
-      PLATE_TARGET.x + CAM_RADIUS * Math.sin(rad),
-      CAM_HEIGHT,
-      PLATE_TARGET.z + CAM_RADIUS * Math.cos(rad),
-    );
-    controlsRef.current.target.copy(PLATE_TARGET);
+    if (azimuth === null) {
+      // Look straight down at the plate from above
+      camera.position.set(PLATE_TARGET.x, AERIAL_HEIGHT, PLATE_TARGET.z);
+      controlsRef.current.target.set(PLATE_TARGET.x, 0, PLATE_TARGET.z);
+    } else {
+      const rad = (azimuth * Math.PI) / 180;
+      camera.position.set(
+        PLATE_TARGET.x + CAM_RADIUS * Math.sin(rad),
+        CAM_HEIGHT,
+        PLATE_TARGET.z + CAM_RADIUS * Math.cos(rad),
+      );
+      controlsRef.current.target.copy(PLATE_TARGET);
+    }
     controlsRef.current.update();
   }, [azimuth, camera]);
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -9,12 +9,17 @@ const FLIP_ENDS = false;
 
 export function BatModel({ handlePos, headPos, avgBatLength }) {
   const { scene } = useGLTF('/models/bat.glb');
+
+  // Clone the shared GLB scene so each BatModel instance owns its own node.
+  // Without this, two instances fight over the same Three.js object and one disappears.
+  const clonedScene = useMemo(() => scene.clone(true), [scene]);
+
   const ref = useRef();
   const localHandleEnd = useRef(new THREE.Vector3());
   const naturalLength  = useRef(null);
 
   useEffect(() => {
-    const box = new THREE.Box3().setFromObject(scene);
+    const box = new THREE.Box3().setFromObject(clonedScene);
     naturalLength.current = box.max.z - box.min.z;
 
     // GLB origin is off-center in X; use bbox center for the cross-section origin.
@@ -23,12 +28,7 @@ export function BatModel({ handlePos, headPos, avgBatLength }) {
 
     const endA = new THREE.Vector3(center.x, center.y, FLIP_ENDS ? box.max.z : box.min.z);
     localHandleEnd.current.copy(endA);
-
-    console.log('GLB natural length (units):', naturalLength.current);
-    if (avgBatLength) {
-      console.log('Base scale:', (avgBatLength / naturalLength.current).toFixed(3));
-    }
-  }, [scene, avgBatLength]);
+  }, [clonedScene, avgBatLength]);
 
   useFrame(() => {
     if (!ref.current || !naturalLength.current) return;
@@ -37,7 +37,6 @@ export function BatModel({ handlePos, headPos, avgBatLength }) {
     const t = new THREE.Vector3(...headPos);
     const dist = h.distanceTo(t);
 
-    // avgBatLength as baseline keeps s≈1 for a typical swing
     const baseLength = avgBatLength ?? naturalLength.current;
     const s          = dist / baseLength;
     const baseScale  = baseLength / naturalLength.current;
@@ -47,12 +46,11 @@ export function BatModel({ handlePos, headPos, avgBatLength }) {
     ref.current.quaternion.copy(q);
     ref.current.scale.setScalar(baseScale * s);
 
-    // Rotate local handle endpoint into world space, then align it with the tracking dot
     const handleEndWorld = localHandleEnd.current.clone()
       .multiplyScalar(baseScale * s)
       .applyQuaternion(q);
     ref.current.position.copy(h).sub(handleEndWorld);
   });
 
-  return <primitive ref={ref} object={scene} />;
+  return <primitive ref={ref} object={clonedScene} />;
 }

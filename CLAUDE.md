@@ -126,6 +126,14 @@ bat-3d/
         └── FrameScrubber.jsx   — play/pause button + frame range slider + counter
 ```
 
+## Playback
+
+RAF-based (not setTimeout) — on each ~16ms browser frame, elapsed real time × `PLAYBACK_SPEED` determines which tracking frame to seek to. This handles the ~300fps Hawkeye data correctly (frames are ~3ms apart, far below any timer resolution). `PLAYBACK_SPEED` is a module-level constant in `App.jsx`; `0.75` = 75% of real-time speed.
+
+## Swing comparison
+
+A second dropdown ("Compare with...") in the top bar lets the user overlay a second swing. The comparison swing is **contact-aligned**: at each step the app finds the comparison frame whose `SEC_FROM_CONTACT` is closest to the primary swing's current `SEC_FROM_CONTACT`. Both swings play simultaneously driven by the primary's playback. The comparison swing uses a distinct color scheme (red handle, teal head, green swing path) defined in the `CMP` constant in `App.jsx`.
+
 ## Current status
 
 - [x] Project initialized
@@ -135,6 +143,10 @@ bat-3d/
 - [x] swings.json generated (run `scripts/pull_swings.R`)
 - [x] Bat axis / coordinate system calibrated — tracking dots align perfectly with bat ends
 - [x] Home plate, strike zone, and batter boxes rendered (geometry from batter_swing_graphs_v4.R)
+- [x] RAF-based playback with real-time frame timing (~300fps Hawkeye data)
+- [x] Swing path ribbon (pre/post contact color split)
+- [x] Swing comparison — contact-aligned overlay with distinct colors
+- [x] Swing labels from SQL Server metadata (Batter vs Pitcher, date, result)
 - [ ] Shiny integration tested end-to-end
 
 ## Development workflow

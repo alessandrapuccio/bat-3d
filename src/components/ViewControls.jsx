@@ -4,7 +4,7 @@ const styles = {
   wrapper: {
     position: 'absolute', top: 12, right: 12, zIndex: 10,
     display: 'flex', flexDirection: 'column', gap: 6,
-    width: 190, fontFamily: 'monospace',
+    width: 215, fontFamily: 'monospace',
   },
   panel: {
     background: 'rgba(20,20,20,0.82)', border: '1px solid #333',
@@ -51,12 +51,14 @@ export function ViewControls({ azimuth, onAzimuth, showSwingPath, onToggleSwingP
             </button>
           ))}
         </div>
-        <input
-          type="range" min={0} max={359} value={azimuth}
-          onChange={e => onAzimuth(Number(e.target.value))}
-          style={{ width: '100%', accentColor: '#4af', marginTop: 6 }}
-        />
-        <div style={styles.degreeLabel}>{azimuth}°</div>
+        {azimuth !== null && <>
+          <input
+            type="range" min={0} max={359} value={azimuth}
+            onChange={e => onAzimuth(Number(e.target.value))}
+            style={{ width: '100%', accentColor: '#4af', marginTop: 6 }}
+          />
+          <div style={styles.degreeLabel}>{azimuth}°</div>
+        </>}
       </div>
 
       <label style={styles.swingPathLabel}>
